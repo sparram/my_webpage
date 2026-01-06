@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas de Investigación - Santiago Parra</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { display: flex; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; background-color: #f9f9f9; color: #333; }
+        nav { width: 220px; padding: 30px 20px; background-color: #2c3e50; color: white; height: 100vh; position: fixed; }
+        nav h2 { font-size: 1.1rem; color: #ecf0f1; text-transform: uppercase; letter-spacing: 1px; }
+        nav ul { list-style: none; padding: 0; }
+        nav ul li { margin: 15px 0; }
+        nav ul li a { text-decoration: none; color: #bdc3c7; font-size: 0.95rem; transition: 0.3s; }
+        nav ul li a:hover { color: white; }
+        
+        section { flex-grow: 1; margin-left: 260px; padding: 40px; max-width: 1000px; background-color: white; min-height: 100vh; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2980b9; margin-top: 40px; border-left: 5px solid #3498db; padding-left: 15px; }
+        .content-block { white-space: pre-wrap; line-height: 1.6; font-size: 1rem; margin-bottom: 20px; }
+        .params-box { background: #f4f7f6; border: 1px solid #d1d8d7; padding: 20px; font-family: 'Courier New', Courier, monospace; border-radius: 5px; margin: 20px 0; overflow-x: auto; }
+        .formula-card { background: #fff; border: 1px solid #e1e8ed; padding: 15px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        hr { border: 0; border-top: 1px solid #eee; margin: 40px 0; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h2>Menú de Notas</h2>
+    <ul>
+        <li><a href="#modelo1d">Modelo 1D No Lineal</a></li>
+        <li><a href="#resolucion1d">Resolución Numérica 1D</a></li>
+        <li><a href="#modelo0d">Modelo 0D</a></li>
+        <li><a href="#fourier-method">Método de Fourier</a></li>
+        <li><a href="#impedancia">Propagación de Impedancia</a></li>
+    </ul>
+</nav>
+
+<section>
+    <h1>Notas sobre Modelado Hemodinámico</h1>
+
+    <div id="modelo1d">
+        <h2>Modelo 1D No lineal:</h2>
+        <div class="content-block">
+Resulta que en el modelo 1D no lineal, las no linealidades son muy leves dentro del régimen fisiólogico… por lo que ese sistema (el no lineal 1D en términos de P y Q) se puede linealizar respecto a (P*, Q*) = (PD, 0), ósea respecto al estado diastólico, lo que resulta en el siguiente sistema:
+
+<strong>Modelo 1D linealizado:</strong>
+        </div>
+        <div class="formula-card">
+            \[ C' \frac{\partial P}{\partial t} + \frac{\partial Q}{\partial x} = 0 \quad (1) \]
+            \[ L' \frac{\partial Q}{\partial t} + \frac{\partial P}{\partial x} = - R' Q \quad (2) \]
+        </div>
+        <div class="content-block">
+R', C', L' son resistencia periférica, Compliance, e inductancia SIN MULTIPLICAR POR LA LONGITUD DEL VASO l
+
+Las formulas de los parámetros vienen dadas por:
+        </div>
+        <div class="params-box">
+R' = 8 * PI * mu / (A0 ^2)        ==> R = R' * l
+C' = 3 * PI * R0 ^ 3 / (2 * E * h0)    ==> C = C' * l    (Fórmula de Moens-Korteweg para tubos de pared delgada)
+L' = rho / A0        ==>        L = L' * l
+A0 = PI * R0 ^ 2
+
+Otra fórmula de C es
+C = 2 * A0 ^(3/2) * l / beta
+Con beta igual a
+beta = sqrt(PI) * E * h0 / (1 - sigma^2)
+Y sigma = 0.5
+        </div>
+
+        <div class="content-block">
+<strong>CASO EJEMPLO: Validado en las referencias</strong>
+        </div>
+        <div class="params-box">
+rho = 1060    []
+mu = 4.0e-3    []
+R0 = 1.2e-2    [m]
+l = 24.137e-2    [m]
+E = 400e3    [Pa]
+h0 = 1.2e-3    [m]
+Y condiciones terminales:
+R1 = 1.1752e7
+R2 = 1.1167e8
+Cc = 1.0163e-8
+(La inicialización de Pc, la presión del Windkessel terminal, no importa, puede ser 0 por ejemplo)
+        </div>
+        <p>Véase Figura 4, Tabla 2 de Xiao et al "A Systematic Comparison between 1-D and 3-D Hemodynamics in Compliant Arterial Models"</p>
+    </div>
+
+    <hr>
+
+    <div id="resolucion1d">
+        <div class="content-block">
+1. Este modelo se puede desacoplar (en la dinámica, me refiero, no en las BC) para ser expresado como una Ecuación de Onda Amortiguada (tanto para P como para Q). Así fue que simulamos este sistema numéricamente en los archivos de modelo 1D.
+        </div>
+        <div class="formula-card">
+            \[ \frac{\partial^2 P}{\partial t^2} - \frac{1}{C'L'} \frac{\partial^2 P}{\partial x^2} + \frac{R'}{L'} \frac{\partial P}{\partial t} = 0 \quad (1^*) \]
+            \[ \frac{\partial^2 Q}{\partial t^2} - \frac{1}{C'L'} \frac{\partial^2 Q}{\partial x^2} + \frac{R'}{L'} \frac{\partial Q}{\partial t} = 0 \quad (2^*) \]
+        </div>
+        <div class="content-block">
+2. La primera ecuación (1) es la típica relación de Presión y Flujo en términos de Compliance (la de C * dP / dt = Q_in - Q_out en Windkessel)
+La segunda ecuación (2) es la típica relación de Presión y Flujo en términos de Resistencia (la de Delta P = R * Q). Sólo que en esta última se añade el término de inercia L * dQ / dt (esto da mayor complejidad, y mayor realismo).
+
+3. Si L' = 0, el modelo se convierte en una ECUACION DE DIFUSION PURA (Calor), tanto para P como para Q (con cte de difusión c^2 = 1 / R' * C' = tau).
+
+4. En este problema sólamente podemos imponer 2 condiciones de borde, una a la izquierda y otra a la derecha. Generalmente se impone Q en la entrada y P en la salida:
+
+<strong>Condición inicial: Entrada de Flujo (Impuesta en Q)</strong>
+Q(x=0, t) = Q_in(t)
+
+<strong>Condición final: Windkessel en P (Impuesta en P)</strong>
+P(x=L, t) = Pc(t) + R1 * Q(x = L, t)
+Donde Pc cumple:
+Cc * dPc / dt = Q(x=L, t) - Pc / R2
+
+Así, el sistema ya está cerrado y bien planteado matematicamente. 
+Sin embargo, para simular el sistema, necesitaríamos hallar P en la entrada y Q en la salida. Para ello, usamos las relaciones del sistema original
+
+<strong>Condición inicial impuesta para P en la solución numérica:</strong>
+dP(x=0, t) / dx = - R' * Q(x=0, t) - L' * dQ(x=0, t) / dt
+
+<strong>Condición final impuesta para Q en la solución numérica:</strong>
+dQ (x=L, t) / dx = - C' * dP(x=L) / dt
+
+Ahora sí podemos simular el sistema numéricamente
+NOTA: El Pc por lo general se inicia en 0, pero no hay que preocuparse por eso: Al final, a uno lo que le interesa es el COMPORTAMIENTO PERIÓDICO DEL SISTEMA, y en este escenario, el Pc también llega a un único comportamiento periódico (así se ha visto en simulaciones)
+
+Ahora, esa condición final es si uno quiere un vaso terminal. Si no.... hay que imponer una condición de continuidad, o algo así.
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="modelo0d">
+        <h2>Modelo 0D:</h2>
+        <div class="formula-card">
+            \[ C \frac{dP}{dt} + Q - Q_{in} = 0 \]
+            \[ L \frac{dQ}{dt} + P_{out} - P = - R Q \]
+        </div>
+        <div class="content-block">
+R, C, L ahora sí son resistencia periférica, compliance, e inductancia
+
+1. Este modelo parece que también se puede desacoplar y queda algo así como una ecuación lineal de 2do orden, creo.
+
+2. Ahora sí se ve más claramente que la primera ecuación es la típica relación de Presión y Flujo en términos de Compliance.
+Lo mismo para la segunda ecuación, que es la típica relación de Presión y Flujo en términos de Resistencia (la de Delta P = R * Q), añadiéndole el término de inercia.
+
+3. Esto es lo más loco e interesante: Si L' = 0, el modelo se convierte en WINDKESSEL DE 2 ELEMENTOS!!!!
+Esto quiere decir que el WK2 tiene relación con esa ecuación de difusión que hablamos arriba... lo cual tiene mucho sentido.
+
+4. Lo mismo de ahorita. Q_in se impone y P_out se calcula mediante una relación de Windkessel 3
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="fourier-method">
+        <h2>COMO SE RESUELVE ESTE SISTEMA??</h2>
+        <div class="content-block">
+Generalmente uno pensaría que la forma más conveniente sería simular el modelo 0D en varios puntos de cada arteria. Sin embargo, vamos a aprovechar la naturaleza de las ondas, vamos a aplicar Fourier en este método:
+Volviendo al modelo 1D linealizado
+
+C' * dP / dt + dQ / dx = 0 (1)
+L' * dQ / dt + dP / dx = - R' * Q (2)
+
+Tomando transformada de Fourier respecto al tiempo, nos queda:
+(al hacer esto, estamos asumiendo que P y Q ya están en el periodo estacionario, debido a la peridicidad de la transformada de Fourier)
+        </div>
+        <div class="formula-card">
+            \[ \frac{dQ}{dx} = - C' i \omega P = - Y P \quad (3) \]
+            \[ \frac{dP}{dx} = - (L' i \omega + R' ) Q = - Z Q \]
+        </div>
+        <div class="content-block">
+Donde Z = R' + i * w * L' es la impedancia en serie y Y = i * w * C' es la admitancia en paralelo
+
+Si derivamos ambas ecuaciones respecto a x, entonces podemos escribir
+d^2 P / dx^2 = Z * Y * P
+d^2 Q / dx^2 = Z * Y * Q
+
+Que tienen por solución analítica:
+P(x) = A * e^{-gamma * x} + B * e^{gamma * x}
+Q(x) = C * e^{-gamma * x} + D * e^{gamma * x}
+
+Con gamma = sqrt(ZY). Esto significa que P y Q están compuestos por una onda que viaja hacia adelante (la de B y D) y otra que viaja hacia atrás (la de A y C).
+
+De hecho, al reemplazar la solución e P en (3) nos queda
+Q = (- 1 / Z) * dP / dx = (- 1 / Z) * (- A * gamma * e^{-gamma * x} + B * gamma * e^{gamma * x}) = (gamma / Z) * (A * e^{-gamma * x} - B * e^{gamma * x}) = (1 / Zc) * (A * e^{-gamma * x} - B * e^{gamma * x})
+
+Donde Zc = sqrt(Z / Y)
+
+Entonces tenemos
+P(x) = A * e^{-gamma * x} + B * e^{gamma * x}
+Q(x) = (1 / Zc) * (A * e^{-gamma * x} - B * e^{gamma * x})
+
+De donde, al evaluar en l nos queda
+P(l) = A * e^{-gamma * l} + B * e^{gamma * l}
+Zc * Q(l) = A * e^{-gamma * l} - B * e^{gamma * l}
+
+==> A = (P(l) + Zc * Q(l)) * e^{gamma * l} / 2
+==> B = (P(l) - Zc * Q(l)) * e^{-gamma * l} / 2
+
+Ahora, al evaluar en x = 0 y reemplazando estas expresiones, nos queda
+P(0) = A + B 
+     = (P(l) + Zc * Q(l)) * e^{gamma * l} / 2 + (P(l) - Zc * Q(l)) * e^{-gamma * l} / 2
+     = P(l) * (e^{gamma * l} + e^{-gamma * l})/ 2 + Zc * Q(l) * (e^{gamma * l} - e^{-gamma * l}) / 2
+     = P(l) * cosh(gamma * l) + Zc * Q(l) * senh(gamma * l)
+
+
+Zc * Q(0) = A - B 
+          = (P(l) + Zc * Q(l)) * e^{gamma * l} / 2 - (P(l) - Zc * Q(l)) * e^{-gamma * l} / 2
+          = P(l) * (e^{gamma * l} - e^{-gamma * l})/ 2 + Zc * Q(l) * (e^{gamma * l} + e^{-gamma * l}) / 2
+          = P(l) * senh(gamma * l) + Zc * Q(l) * cosh(gamma * l)
+
+==> Q(0) = P(l) * senh(gamma * l) / Zc +  Q(l) * cosh(gamma * l)
+
+Por lo que
+P(0) = P(l) * cosh(gamma * l) + Zc * Q(l) * senh(gamma * l)
+Q(0) = P(l) * senh(gamma * l) / Zc +  Q(l) * cosh(gamma * l)
+
+De donde tambien sale que
+P(l) = P(0) * cosh(gamma * l) - Zc * Q(0) * senh(gamma * l)
+Q(l) = - P(0) * senh(gamma * l) / Zc +  Q(0) * cosh(gamma * l)
+
+Esto define una <strong>MATRIZ DE TRANSMISION</strong>, de la información en x=0 a la información en x=l
+(Ojo que aqui en todo momento estamos trabajando con transformadas de Fourier)
+Notar que: 
+-La matriz de transmisión tiene determinante 1, lo cual refleja el principio de conservación.
+-Para ir de a varios segmentos, A -> B -> C, podemos simplemente multiplicar las matrices
+[P_final de C, Q_final de C] = M_C * M_B * M_A * [P_inicio de A, Q_inicio de A]
+Esto es, basta con aplicar consecutivamente la matriz de transmisión
+- Si queremos un punto intermedio, digamos x entre 0 y l, reemplazamos l por x en la fórmula de la matriz de transición. 
+
+<strong>ESTO ES LO QUE SE USA PARA SIMULAR!!!!</strong>
+1. Consideramos P(0) y Q(0) y calculamos sus FFT
+2. Calculamos la matriz de transmisión
+3. Resolvemos para P(l) y Q(l)
+4. Aplicamos IFFT y esto nos da P y Q en x=l
+
+Sin embargo, solo podemos imponer Q(0). Para hallar P(0) lo que hacemos es... antes de realizar la simulación, calcular todas las impedancias, empezando desde las terminales (que conocemos, gracias a los parámetros de WK3 que se imponen), y devolviendonos (como una especie de backpropagation) hasta el corazón. Una vez en el corazón, con su Z_in y la transformada de Q(0), podemos calcular P(0) = Z_in * Q(0) y comenzar a simular!
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="impedancia">
+        <h2>Algoritmo de Propagación de Impedancia</h2>
+        <div class="content-block">
+En la terminal de la arteria, la relación entre presión y flujo viene dada por la impedancia del WK3, osea P(x_T) = Z_WK3 * Q(x_T)
+Donde x_T es el punto limítrofe! el punto terminal, y Z_WK3 es la impedancia del WK3:
+Z_WK3 = R_c + R_p / (1 + i * w * R_p * C_c)
+
+Entonces, al inicio de esa arteria/segmento, se tenía
+P(0) = P(l) * cosh(gamma * l) + Zc * Q(l) * senh(gamma * l) = Q(l) * (Z_WK3 * cosh(gamma * l) + Zc * senh(gamma * l))
+Q(0) = P(l) * senh(gamma * l) / Zc +  Q(l) * cosh(gamma * l) = Q(l) * (Z_WK3 * senh(gamma * l) / Zc + cosh(gamma * l))
+
+De donde se tiene 
+Z_in = P(0) / Q(0) = (Z_WK3 * cosh(gamma * l) + Zc * senh(gamma * l)) / (Z_WK3 * senh(gamma * l) / Zc + cosh(gamma * l))
+Z_in = Z_c * (Z_WK3 + Zc * tanh(gamma * l)) / (Z_c + Z_WK3 * tanh(gamma * l))
+
+Así entonces, se puede calcular la impezancia al inicio del segmento, usando la condición WK3 (para calcular Z_WK3) y las propiedades del segmento (para calcular Z_c y gamma)
+
+Tener en cuenta que en las bifurcaciones, las impedancias se combinan usando la fórmula
+1 / Z_padre = Suma de 1 / Z_hijas sobre todas las hijas.
+Entonces, el framework completo para la simulación es:
+
+1. Calcular Q(0) inicial y su FFT
+2. Calcular las impedancias de los nodos terminales
+3. Calcular las impedancias del resto del árbol, usando la formula encontrada que relacióna Z_in con Z_final (teniendo cuidado en las bifurcaciones)
+4. Una vez que se tenga Z_in, calcular P(0) = Z_in * Q(0)
+5. Ahora sí, simular todo!
+        </div>
+    </div>
+</section>
+
+</body>
+</html>
